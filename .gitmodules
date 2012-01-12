@@ -1,0 +1,3 @@
+[submodule "ExtensionMethods"]
+	path = ExtensionMethods
+	url = git://github.com/taspeotis/ExtensionMethods.git
