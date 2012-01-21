@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalReportsEngine", "LocalReportsEngine\LocalReportsEngine.csproj", "{22BB10D1-EAC8-4F20-9398-68A42E4AF4DE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExtensionMethods", "..\ExtensionMethods\ExtensionMethods\ExtensionMethods.csproj", "{924005BE-31F0-471D-B09A-D74062C26D06}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExtensionMethods", "ExtensionMethods\ExtensionMethods\ExtensionMethods.csproj", "{924005BE-31F0-471D-B09A-D74062C26D06}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
