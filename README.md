@@ -1,0 +1,1 @@
+LocalReportsEngine makes it easier for developers to leverage Microsoft's ReportViewer WinForms control by providing a generic data engine for the reports. You'll no longer have to parse the RDL files and extract and execute queries yourself! It's developed in C#.
