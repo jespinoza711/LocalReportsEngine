@@ -1,3 +1,9 @@
 [submodule "ExtensionMethods"]
 	path = ExtensionMethods
 	url = git://github.com/taspeotis/ExtensionMethods.git
+[submodule "SaneCop"]
+	path = SaneCop
+	url = git://github.com/taspeotis/SaneCop.git
+[submodule "ExpressionEvaluator"]
+	path = ExpressionEvaluator
+	url = git@github.com:taspeotis/ExpressionEvaluator.git

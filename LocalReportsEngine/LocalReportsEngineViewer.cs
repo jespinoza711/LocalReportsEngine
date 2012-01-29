@@ -38,8 +38,8 @@ namespace LocalReportsEngine
         {
             this.Reset();
 
-            this.Report = LocalReportsEngineCommon.DeserializeReport(this.ReportPath);
-            LocalReportsEngineCommon.ResolveDataSets(this.Report, this.DataSets, this.DataSources); // Later we will add hooks for users
+            //this.Report = LocalReportsEngineCommon.DeserializeReport(this.ReportPath);
+            //LocalReportsEngineCommon.ResolveDataSets(this.Report, this.DataSets, this.DataSources); // Later we will add hooks for users
 
             this.LocalReport.ReportPath = this.ReportPath;
 

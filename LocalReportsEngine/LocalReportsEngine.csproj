@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="AdoNetDataSetResolver.cs" />
     <Compile Include="AdoNetDataSourceResolver.cs" />
+    <Compile Include="ResolvableResourceEventArgs.cs" />
     <Compile Include="IDataSetResolver.cs" />
     <Compile Include="IDataSourceResolver.cs" />
     <Compile Include="LocalReportsEngineCommon.cs" />
@@ -52,14 +53,31 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RdlElements\RdlConnectionProperties.cs" />
+    <Compile Include="RdlElements\RdlDataSetReference.cs" />
     <Compile Include="RdlElements\RdlDataSource.cs" />
     <Compile Include="RdlElements\RdlDataSet.cs" />
+    <Compile Include="RdlElements\RdlDefaultValue.cs" />
+    <Compile Include="RdlElements\RdlParameterValue.cs" />
     <Compile Include="RdlElements\RdlQuery.cs" />
     <Compile Include="RdlElements\RdlQueryParameter.cs" />
     <Compile Include="RdlElements\RdlReport.cs" />
+    <Compile Include="RdlElements\RdlReportParameter.cs" />
+    <Compile Include="RdlElements\RdlValidValues.cs" />
+    <Compile Include="ReportMeta.cs" />
+    <Compile Include="ResolvableDataSet.cs" />
+    <Compile Include="ResolvableDataSetCollection.cs" />
+    <Compile Include="ResolvableDataSource.cs" />
+    <Compile Include="ResolvableDataSourceCollection.cs" />
+    <Compile Include="ResolvableReportParameter.cs" />
+    <Compile Include="ResolvableReportParameterCollection.cs" />
+    <Compile Include="ResolvableResource.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ExtensionMethods\ExtensionMethods\ExtensionMethods.csproj">
+    <ProjectReference Include="..\ExpressionEvaluator\ExpressionEvaluator\ExpressionEvaluator.csproj">
+      <Project>{CF326B90-E26F-4867-A19C-EA044556BB00}</Project>
+      <Name>ExpressionEvaluator</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ExtensionMethods\ExtensionMethods\ExtensionMethods.csproj">
       <Project>{924005BE-31F0-471D-B09A-D74062C26D06}</Project>
       <Name>ExtensionMethods</Name>
     </ProjectReference>

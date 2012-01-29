@@ -19,5 +19,8 @@ namespace LocalReportsEngine.RdlElements
         public List<RdlDataSource> DataSources { get; set; }
 
         public string Description { get; set; }
+
+        [XmlArrayItem("ReportParameter")]
+        public List<RdlReportParameter> ReportParameters { get; set; } 
     }
 }
