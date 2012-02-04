@@ -9,6 +9,7 @@ using System.IO;
 using System.Xml;
 using System.Xml.Serialization;
 using ExtensionMethods;
+using System.Globalization;
 
 namespace LocalReportsEngine
 {
@@ -49,83 +50,139 @@ namespace LocalReportsEngine
             }
         }
 
-        /*
-        public static void ResolveDataSets(RdlReport report, Dictionary<string, object> dataSets, Dictionary<string, IDataSetResolver> dataSources)
+        internal static ReportParameter ElementToObject(RdlReportParameter reportParameterElement, ReportMeta reportMeta)
         {
-            foreach (RdlDataSet dataSet in report.DataSets)
+            if (reportParameterElement == null) throw new ArgumentNullException("reportParameterElement");
+            if (reportMeta == null) throw new ArgumentNullException("reportMeta");
+
+            var reportParameter = new ReportParameter();
+            reportParameter.DataType = StringToDataTypeEnum(reportParameterElement.DataType);
+
+            // Load available values
+            var validValues = reportParameterElement.ValidValues;
+            if (validValues != null)
             {
-                if (dataSets.ContainsKey(dataSet.Name))
-                    continue;
+                var parameterValues = validValues.ParameterValues;
+                var dataSetReference = validValues.DataSetReference;
+                
+                // Explicit list
+                if (parameterValues != null)
+                {
+                    foreach(var parameterValue in parameterValues)
+                    {
+                        object value = PhraseToValue(reportMeta, reportParameter.DataType, parameterValue.Value);
+                        reportParameter.AvailableValues.Add(parameterValue.Label, value);
+                    }
+                }
+                else if(dataSetReference != null)
+                {
+                    // TODO: Datasets etc
+                    throw new NotImplementedException();
+                }
+            }
 
-                // This is a no-op if the data source has already been resolved
-                // TODO: Bad, make ResolveDataSource resolve the data source and nothing else
-                ResolveDataSource(report, dataSet.Query.DataSourceName, dataSources);
+            // Load default values
+            var defaultValues = reportParameterElement.DefaultValue;
+            if (defaultValues != null)
+            {
+                var values = defaultValues.Values;
+                var dataSetReference = defaultValues.DataSetReference;
 
-                IDataSetResolver dataSetResolver = dataSources[dataSet.Query.DataSourceName];
-                dataSets.Add(dataSet.Name, dataSetResolver.ResolveDataSet(dataSet));
+                // Explicit list
+                if (values != null)
+                {
+                    foreach (var value in values)
+                    {
+                        reportParameter.DefaultValues.Add(PhraseToValue(reportMeta, reportParameter.DataType, value));
+                    }
+                }
+                else if (dataSetReference != null)
+                {
+                    // TODO: Datasets etc
+                    throw new NotImplementedException();
+                }
+            }
+
+            // Set a value (if possible)
+            reportParameter.Value = reportParameter.DefaultValues.FirstOrDefault();
+
+            // Look up label (if possible)
+            reportParameter.Label =
+                reportParameter.AvailableValues.FirstOrDefault(
+                    av => av.Value != null && av.Value.Equals(reportParameter.Value)).Key;
+
+            return reportParameter;
+        }
+
+        private static object PhraseToValue(ReportMeta reportMeta, RdlDataTypeEnum dataType, string phrase)
+        {
+            string expression;
+            if (IsExpression(phrase, out expression))
+                return reportMeta.ReportExpressionEvaluator.Evaluate(expression);
+
+            switch(dataType)
+            {
+                case RdlDataTypeEnum.String:
+                    return phrase;
+
+                case RdlDataTypeEnum.Boolean:
+                    return Boolean.Parse(phrase);
+
+                case RdlDataTypeEnum.Integer:
+                    return Int32.Parse(phrase);
+
+                case RdlDataTypeEnum.DateTime:
+                    return DateTime.Parse(phrase, CultureInfo.GetCultureInfo("en-US"));
+
+                case RdlDataTypeEnum.Float:
+                    return Single.Parse(phrase);
+
+                case RdlDataTypeEnum.Binary:
+                    throw new NotImplementedException();
+                
+                case RdlDataTypeEnum.Variant:
+                    return phrase;
+                
+                case RdlDataTypeEnum.VariantArray:
+                    throw new NotImplementedException();
+                
+                default:
+                    throw new ArgumentOutOfRangeException("dataType");
             }
         }
-         * */
 
-        /*public static void ResolveDataSources(RdlReport report, string dataSourceName, Dictionary<string, IDataSetResolver> dataSources)
+        public static bool IsExpression(string phrase)
         {
-            if (dataSources.ContainsKey(dataSourceName))
-                return;
-
-            RdlDataSource dataSource = report.DataSources.FirstOrDefault(ds => ds.Name.SafeEquals(dataSourceName));
-            if (dataSource == null)
-                return;
-
-            IDataSourceResolver dataSourceResolver;
-            if (!DataSourceResolvers.TryGetValue(dataSource.ConnectionProperties.DataProvider, out dataSourceResolver))
-                return;
-
-            IDataSetResolver resolvedDataSource = dataSourceResolver.ResolveDataSource(dataSource);
-            dataSources.Add(dataSource.Name, resolvedDataSource);
-        }*/
-
-        public static bool IsRdlExpression(string expression)
-        {
-            if (String.IsNullOrWhiteSpace(expression))
+            if (String.IsNullOrWhiteSpace(phrase))
                 return false;
 
-            return expression.TrimStart().First() == '=';
+            return phrase.TrimStart().First() == '=';
         }
 
-        public static ExpressionMeta FindParametersAndExpressions<T, U>(IEnumerable<T> input, Collection<U> output, Func<T, U> collectionConverter, Func<T, IEnumerable<string>> expressionConverter)
+        public static bool IsExpression(string phrase, out string expression)
         {
-            var meta = new ExpressionMeta("VisualBasic");
-
-            foreach (var item in input)
+            if (!String.IsNullOrWhiteSpace(phrase))
             {
-                foreach(var expression in expressionConverter(item))
-                    if (IsRdlExpression(expression))
-                        meta.Expressions.Add(expression);
-
-                output.Add(collectionConverter(item));
+                phrase = phrase.Trim();
+                if (phrase.First() == '=')
+                {
+                    expression = phrase.Substring(1);
+                    return true;
+                }
             }
 
-            return meta;
+            expression = null;
+            return false;
         }
 
-        public static void ResolveDataSource(ResolvableDataSource resolving)
+        private static RdlDataTypeEnum StringToDataTypeEnum(string value)
         {
-            IDataSourceResolver resolver;
-            if (!DataSourceResolvers.TryGetValue(resolving.Resource.ConnectionProperties.DataProvider, out resolver))
-                return;
-
-            resolving.Result = resolver.ResolveDataSource(resolving.Resource);
-            resolving.IsResolved = true;
-        }
-
-        public static void ResolveDataSet(ResolvableDataSet resolving)
-        {
-            var resolver = resolving.DataSource.Result as IDataSetResolver;
-            if (resolver == null)
-                return;
-
-            resolving.Result = resolver.ResolveDataSet(resolving.Resource);
-            resolving.IsResolved = true;
+            RdlDataTypeEnum result;
+            if (Enum.TryParse(value, true, out result))
+                return result;
+            
+            // Default
+            return RdlDataTypeEnum.String;
         }
     }
 }

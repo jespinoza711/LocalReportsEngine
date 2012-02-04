@@ -1,5 +1,5 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="ResolvableResourceEventArgs.cs" company="">
+// <copyright file="ParameterMeta.cs" company="">
 // TODO: Update copyright text.
 // </copyright>
 // -----------------------------------------------------------------------
@@ -14,13 +14,16 @@ namespace LocalReportsEngine
     /// <summary>
     /// TODO: Update summary.
     /// </summary>
-    public class ResolvableResourceEventArgs<T> : EventArgs
+    public class ReportParameter
     {
-        public readonly T Resolving;
+        public readonly Dictionary<string, object> AvailableValues = new Dictionary<string, object>();
 
-        public ResolvableResourceEventArgs(T resolving)
-        {
-            Resolving = resolving;
-        }
+        public readonly List<object> DefaultValues = new List<object>();
+
+        public string Label { get; set; }
+
+        public object Value { get; set; }
+
+        public RdlElements.RdlDataTypeEnum DataType { get; set; }
     }
 }

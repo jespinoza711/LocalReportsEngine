@@ -24,42 +24,35 @@ namespace LocalReportsEngine
 
         public readonly RdlReport ReportElement;
 
-        public readonly ResolvableDataSourceCollection DataSources = new ResolvableDataSourceCollection();
-
-        public readonly ResolvableDataSetCollection DataSets = new ResolvableDataSetCollection();
-
-        public readonly ResolvableReportParameterCollection ReportParameters = new ResolvableReportParameterCollection();
-
         public readonly Evaluator ReportExpressionEvaluator;
 
-        public ReportMeta(RdlReport reportElement, bool resolveDataSources, bool resolveDataSets)
+        private Resolvable<string, ReportParameter> ReportParameters;
+
+        private void ReportParameters_Resolve(object sender, ResolvableEventArgs<string, ReportParameter> args)
+        {
+            // Prompt the user first
+
+            var reportParameterElement =
+                ReportElement.ReportParameters.First(rp => rp.Name.SafeEqualsIgnoreCase(args.ResolvingKey));
+
+            args.ResolvedItem = LocalReportsEngineCommon.ElementToObject(reportParameterElement, this);
+            args.IsResolved = true;
+        }
+
+        public ReportMeta(RdlReport reportElement)
         {
             try
             {
                 ReportElement = reportElement;
+                ReportExpressionEvaluator = CreateExpressionEvaluator();
 
-                // Wrap data sources
-                foreach(var element in ReportElement.DataSources)
-                    DataSources.Add(new ResolvableDataSource(element));
+                // TODO: Get all expressions and compile them
+                // TODO: Async compile in Evaluator
 
-                // Wrap data sets
-                foreach(var element in ReportElement.DataSets)
-                    DataSets.Add(new ResolvableDataSet(element, DataSources.FirstOrDefault(ds => element.Query.DataSourceName.SafeEqualsIgnoreCase(ds.Resource.Name))));
+                // Parameters
+                ReportParameters = new Resolvable<string, ReportParameter>(ReportParameters_Resolve, StringComparer.InvariantCultureIgnoreCase);
 
-                // Report Parameters
-                var meta = LocalReportsEngineCommon.FindParametersAndExpressions(ReportElement.ReportParameters,
-                                                                                 ReportParameters,
-                                                                                 x => new ResolvableReportParameter(x),
-                                                                                 ExpressionsForReportParameter);
-
-                // Add extensions first
-                ReportExpressionEvaluator = meta.Compile();
-
-                if (resolveDataSources)
-                    ResolveDataSources();
-
-                if (resolveDataSets)
-                    ResolveDataSets();
+                Console.WriteLine("StartDate: {0}", ReportParameters["StartDate"].Value);
             }
             catch (Exception)
             {
@@ -67,8 +60,56 @@ namespace LocalReportsEngine
                     ReportExpressionEvaluator.Dispose();
 
                 throw;
+            } 
+        }
+
+        private Evaluator CreateExpressionEvaluator()
+        {
+            var meta = new ExpressionMeta("VisualBasic");
+
+            // Expressions
+            foreach (var expression in GetExpressions())
+                meta.AddExpression(expression);
+
+            // TODO: Extensions
+
+            return meta.Compile();
+        }
+
+        private IEnumerable<string> GetExpressions()
+        {
+            foreach (var expression in GetReportParameterExpressions())
+                yield return expression;
+
+            // TODO: Data set reference etc
+        }
+
+        private IEnumerable<string> GetReportParameterExpressions()
+        {
+            if (ReportElement.ReportParameters != null)
+            {
+                foreach (var reportParameter in ReportElement.ReportParameters)
+                {
+                    string expression;
+
+                    // Valid Values
+                    if (reportParameter.ValidValues != null && reportParameter.ValidValues.ParameterValues != null)
+                        foreach (var parameterValue in reportParameter.ValidValues.ParameterValues)
+                        {
+                            if (LocalReportsEngineCommon.IsExpression(parameterValue.Label, out expression))
+                                yield return expression;
+
+                            if (LocalReportsEngineCommon.IsExpression(parameterValue.Value, out expression))
+                                yield return expression;
+                        }
+
+                    // Default Values
+                    if (reportParameter.DefaultValue != null && reportParameter.DefaultValue.Values != null)
+                        foreach (var value in reportParameter.DefaultValue.Values)
+                            if (LocalReportsEngineCommon.IsExpression(value, out expression))
+                                yield return expression;
+                }
             }
-            
         }
 
         ~ReportMeta()
@@ -87,93 +128,27 @@ namespace LocalReportsEngine
 
         public bool IsDisposed { get; private set; }
 
-        public event EventHandler<ResolvableResourceEventArgs<ResolvableDataSource>> DataSourceResolve;
-
-        public event EventHandler<ResolvableResourceEventArgs<ResolvableDataSet>> DataSetResolve;
-
-        public void ResolveDataSources()
-        {
-            foreach (var resolving in DataSources)
-            {
-                if (resolving.IsResolved)
-                    continue;
-
-                var subscribers = DataSourceResolve;
-                if (subscribers != null)
-                {
-                    var eventArgs = new ResolvableResourceEventArgs<ResolvableDataSource>(resolving);
-                    var invocationList = DataSourceResolve.GetInvocationList();
-
-                    foreach (EventHandler invoke in invocationList)
-                    {
-                        invoke(this, eventArgs);
-                        if (resolving.IsResolved)
-                            break;
-                    }
-                }
-
-                if (resolving.IsResolved)
-                    continue;
-
-                // Default resolver
-                LocalReportsEngineCommon.ResolveDataSource(resolving);
-            }
-        }
-
-        public void ResolveDataSets()
-        {
-            // DRY (ResolveDataSources)! We can combine the common functionality
-            foreach(var resolving in DataSets)
-            {
-                if (resolving.IsResolved)
-                    continue;
-
-                if (resolving.DataSource == null || !resolving.DataSource.IsResolved)
-                    continue;
-
-                var subscribers = DataSetResolve;
-                if (subscribers != null)
-                {
-                    var eventArgs = new ResolvableResourceEventArgs<ResolvableDataSet>(resolving);
-                    var invocationList = DataSourceResolve.GetInvocationList();
-
-                    foreach(EventHandler invoke in invocationList)
-                    {
-                        invoke(this, eventArgs);
-                        if (resolving.IsResolved)
-                            break;
-                    }
-                }
-
-                if (resolving.IsResolved)
-                    continue;
-
-                // Default resolver
-                LocalReportsEngineCommon.ResolveDataSet(resolving);
-            }
-        }
-
-        public static ReportMeta Load(Stream stream, bool resolveDataSources = true, bool resolveDataSets = true)
+        public static ReportMeta Load(Stream stream)
         {
             var reportElement = LocalReportsEngineCommon.DeserializeReport(stream);
-            return new ReportMeta(reportElement, resolveDataSources, resolveDataSets);
+            return new ReportMeta(reportElement);
         }
 
-        public static ReportMeta LoadFromFile(string path, bool resolveDataSources = true, bool resolveDataSets = true)
+        public static ReportMeta LoadFromFile(string path)
         {
             if (path == null) throw new ArgumentNullException("path");
             if (String.IsNullOrWhiteSpace(path)) throw new ArgumentOutOfRangeException("path");
 
             using (var stream = File.OpenRead(path))
-                return Load(stream, resolveDataSources, resolveDataSets);
+                return Load(stream);
         }
 
-        public static ReportMeta LoadFromResource(string name, Assembly assembly = null, bool resolveDataSources = true, bool resolveDataSets = true)
+        public static ReportMeta LoadFromResource(string name, Assembly assembly = null)
         {
             if (assembly == null) assembly = Assembly.GetCallingAssembly();
 
             using (var stream = assembly.GetManifestResourceStream(name))
-                return Load(stream, resolveDataSources, resolveDataSets);
+                return Load(stream);
         }
 
         public void Dispose()
