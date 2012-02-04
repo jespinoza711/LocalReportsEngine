@@ -51,6 +51,8 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="RdlElements\RdlDataTypeEnum.cs" />
+    <Compile Include="ReadOnlyParameterCollection.cs" />
+    <Compile Include="ReadOnlyParameter.cs" />
     <Compile Include="ReportParameter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RdlElements\RdlConnectionProperties.cs" />

@@ -44,15 +44,11 @@ namespace LocalReportsEngine
             try
             {
                 ReportElement = reportElement;
-                ReportExpressionEvaluator = CreateExpressionEvaluator();
-
-                // TODO: Get all expressions and compile them
-                // TODO: Async compile in Evaluator
-
-                // Parameters
                 ReportParameters = new Resolvable<string, ReportParameter>(ReportParameters_Resolve, StringComparer.InvariantCultureIgnoreCase);
+                ReportExpressionEvaluator = CreateExpressionEvaluator(); // Depends on resolvable collections
 
                 Console.WriteLine("StartDate: {0}", ReportParameters["StartDate"].Value);
+                Console.WriteLine("EndDate: {0}", ReportParameters["EndDate"].Value);
             }
             catch (Exception)
             {
@@ -72,6 +68,12 @@ namespace LocalReportsEngine
                 meta.AddExpression(expression);
 
             // TODO: Extensions
+            var extension = new Extension();
+            extension.Name = "Parameters";
+            extension.Instance = new ReadOnlyParameterCollection(ReportParameters);
+            meta.AddExtension(extension);
+
+            // TODO: Async compile in Evaluator
 
             return meta.Compile();
         }
@@ -80,6 +82,8 @@ namespace LocalReportsEngine
         {
             foreach (var expression in GetReportParameterExpressions())
                 yield return expression;
+
+            // TODO: Get all expressions and compile them
 
             // TODO: Data set reference etc
         }
