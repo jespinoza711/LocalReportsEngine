@@ -8,7 +8,7 @@ namespace LocalReportsEngine
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
-    internal class Resolvable<TKey, TValue> : MarshalByRefObject
+    public class Resolvable<TKey, TValue> : MarshalByRefObject
     {
         protected Dictionary<TKey, TValue> ResolvedItems { get; private set; }
 

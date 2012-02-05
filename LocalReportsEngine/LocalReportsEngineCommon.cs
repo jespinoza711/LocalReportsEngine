@@ -215,5 +215,70 @@
 
             return resolved;
         }
+
+        internal static string ValueToString(object value, RdlDataTypeEnum dataType)
+        {
+            switch(dataType)
+            {
+                case RdlDataTypeEnum.String:
+                    return value.ToString();
+
+                case RdlDataTypeEnum.Boolean:
+                    try
+                    {
+                        var converted = Convert.ToBoolean(value);
+                        return converted.ToString(CultureInfo.InvariantCulture);
+                    }
+                    catch (Exception)
+                    {
+                        return String.Empty;
+                    }
+
+                case RdlDataTypeEnum.Integer:
+                    try
+                    {
+                        var converted = Convert.ToInt32(value);
+                        return converted.ToString(CultureInfo.InvariantCulture);
+                    }
+                    catch (Exception)
+                    {
+                        return String.Empty;
+                    }
+
+                case RdlDataTypeEnum.DateTime:
+                    try
+                    {
+                        var converted = Convert.ToDateTime(value);
+                        return converted.ToString("o"); // ISO 8601
+                    }
+                    catch (Exception)
+                    {
+                        return String.Empty;
+                    }
+
+                case RdlDataTypeEnum.Float:
+                    try
+                    {
+                        var converted = Convert.ToSingle(value);
+                        return converted.ToString(CultureInfo.InvariantCulture);
+                    }
+                    catch (Exception)
+                    {
+                        return String.Empty;
+                    }
+
+                case RdlDataTypeEnum.Binary:
+                    throw new NotImplementedException();
+
+                case RdlDataTypeEnum.Variant:
+                    throw new NotImplementedException();
+
+                case RdlDataTypeEnum.VariantArray:
+                    throw new NotImplementedException();
+
+                default:
+                    throw new ArgumentOutOfRangeException("dataType");
+            }
+        }
     }
 }

@@ -8,7 +8,7 @@ namespace LocalReportsEngine
     /// <typeparam name="TKey">The type of the key of the resolvable item.</typeparam>
     /// <typeparam name="TValue">The type of the resolvable item.</typeparam>
     [Serializable]
-    internal class ResolvableEventArgs<TKey, TValue> : EventArgs
+    public class ResolvableEventArgs<TKey, TValue> : EventArgs
     {
         /// <summary>
         /// The key of the item to be resolved.

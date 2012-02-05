@@ -26,9 +26,9 @@ namespace LocalReportsEngine
 
         public readonly Evaluator ReportExpressionEvaluator;
 
-        private readonly Resolvable<string, ReportParameter> ReportParameters;
+        public readonly Resolvable<string, ReportParameter> ReportParameters;
 
-        private readonly Resolvable<string, IResolvedDataSource> DataSources;
+        public readonly Resolvable<string, IResolvedDataSource> DataSources;
 
         private void ReportParameters_Resolve(object sender, ResolvableEventArgs<string, ReportParameter> args)
         {
@@ -49,11 +49,6 @@ namespace LocalReportsEngine
                 ReportParameters = new Resolvable<string, ReportParameter>(ReportParameters_Resolve, StringComparer.InvariantCultureIgnoreCase);
                 DataSources = new Resolvable<string, IResolvedDataSource>(DataSources_Resolve, StringComparer.InvariantCultureIgnoreCase);
                 ReportExpressionEvaluator = CreateExpressionEvaluator(); // Depends on resolvable collections
-
-                /*Console.WriteLine("StartDate: {0}", ReportParameters["StartDate"].Value);
-                Console.WriteLine("EndDate: {0}", ReportParameters["EndDate"].Value);
-                Console.WriteLine("DataSource1: {0}", DataSources["DataSource1"]);*/
-                Console.WriteLine("DataSet1: {0}", ResolveDataSet("DataSet1", true));
             }
             catch (Exception)
             {
