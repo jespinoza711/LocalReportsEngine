@@ -42,10 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AdoNetDataSetResolver.cs" />
-    <Compile Include="AdoNetDataSourceResolver.cs" />
-    <Compile Include="IDataSetResolver.cs" />
-    <Compile Include="IDataSourceResolver.cs" />
+    <Compile Include="AdoNetDataSource.cs" />
+    <Compile Include="IResolvedDataSource.cs" />
     <Compile Include="LocalReportsEngineCommon.cs" />
     <Compile Include="LocalReportsEngineViewer.cs">
       <SubType>Component</SubType>

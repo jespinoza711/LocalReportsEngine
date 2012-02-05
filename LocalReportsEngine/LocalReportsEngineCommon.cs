@@ -1,32 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using ExpressionEvaluator;
-using LocalReportsEngine.RdlElements;
-using System.IO;
-using System.Xml;
-using System.Xml.Serialization;
-using ExtensionMethods;
-using System.Globalization;
-
-namespace LocalReportsEngine
+﻿namespace LocalReportsEngine
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Globalization;
+    using System.IO;
+    using System.Linq;
+    using System.Xml;
+    using System.Xml.Serialization;
+    using RdlElements;
+
     public static class LocalReportsEngineCommon
     {
         static LocalReportsEngineCommon()
         {
-            var defaultResolver = new AdoNetDataSourceResolver();
-            DataSourceResolvers = new Dictionary<string, IDataSourceResolver>(StringComparer.InvariantCultureIgnoreCase)
+            var defaultResolverType = typeof(AdoNetDataSource);
+            DataSourceResolvers = new Dictionary<string, Type>(StringComparer.InvariantCultureIgnoreCase)
                                       {
-                                          {"SQL", defaultResolver},
-                                          {"OLEDB", defaultResolver},
-                                          {"ODBC", defaultResolver}
+                                          {"SQL", defaultResolverType},
+                                          {"OLEDB", defaultResolverType},
+                                          {"ODBC", defaultResolverType}
                                       };
         }
 
-        public static Dictionary<string, IDataSourceResolver> DataSourceResolvers { get; set; }
+        public static Dictionary<string, Type> DataSourceResolvers { get; set; }
 
         public static RdlReport DeserializeReport(Stream stream)
         {
@@ -114,7 +110,7 @@ namespace LocalReportsEngine
             return reportParameter;
         }
 
-        private static object PhraseToValue(ReportMeta reportMeta, RdlDataTypeEnum dataType, string phrase)
+        public static object PhraseToValue(ReportMeta reportMeta, RdlDataTypeEnum dataType, string phrase)
         {
             string expression;
             if (IsExpression(phrase, out expression))
@@ -183,6 +179,41 @@ namespace LocalReportsEngine
             
             // Default
             return RdlDataTypeEnum.String;
+        }
+
+        internal static IResolvedDataSource ElementToObject(RdlDataSource dataSourceElement, ReportMeta reportMeta)
+        {
+            if (dataSourceElement.ConnectionProperties == null)
+                // Probably a data source reference. The user should resolve these themselves.
+                // But if not, give them a null object. If it's never referenced, there's no problem.
+                return null;
+
+            if (dataSourceElement.ConnectionProperties == null)
+                // Again, if there's no connection string the user should have resolved
+                // this data source themselves. But if not, give them a null object.
+                return null;
+
+            Type resolverType;
+            lock (DataSourceResolvers)
+                if (!DataSourceResolvers.TryGetValue(dataSourceElement.ConnectionProperties.DataProvider, out resolverType))
+                    return null;
+
+            IResolvedDataSource resolved = null;
+
+            try
+            {
+                resolved = (IResolvedDataSource) Activator.CreateInstance(resolverType);
+                resolved.Initialize(dataSourceElement, reportMeta);
+            }
+            catch (Exception)
+            {
+                if (resolved != null)
+                    resolved.Dispose();
+
+                throw;
+            }
+
+            return resolved;
         }
     }
 }

@@ -26,11 +26,13 @@ namespace LocalReportsEngine
 
         public readonly Evaluator ReportExpressionEvaluator;
 
-        private Resolvable<string, ReportParameter> ReportParameters;
+        private readonly Resolvable<string, ReportParameter> ReportParameters;
+
+        private readonly Resolvable<string, IResolvedDataSource> DataSources;
 
         private void ReportParameters_Resolve(object sender, ResolvableEventArgs<string, ReportParameter> args)
         {
-            // Prompt the user first
+            // Prompt the consumer first
 
             var reportParameterElement =
                 ReportElement.ReportParameters.First(rp => rp.Name.SafeEqualsIgnoreCase(args.ResolvingKey));
@@ -45,10 +47,13 @@ namespace LocalReportsEngine
             {
                 ReportElement = reportElement;
                 ReportParameters = new Resolvable<string, ReportParameter>(ReportParameters_Resolve, StringComparer.InvariantCultureIgnoreCase);
+                DataSources = new Resolvable<string, IResolvedDataSource>(DataSources_Resolve, StringComparer.InvariantCultureIgnoreCase);
                 ReportExpressionEvaluator = CreateExpressionEvaluator(); // Depends on resolvable collections
 
-                Console.WriteLine("StartDate: {0}", ReportParameters["StartDate"].Value);
+                /*Console.WriteLine("StartDate: {0}", ReportParameters["StartDate"].Value);
                 Console.WriteLine("EndDate: {0}", ReportParameters["EndDate"].Value);
+                Console.WriteLine("DataSource1: {0}", DataSources["DataSource1"]);*/
+                Console.WriteLine("DataSet1: {0}", ResolveDataSet("DataSet1", true));
             }
             catch (Exception)
             {
@@ -59,13 +64,42 @@ namespace LocalReportsEngine
             } 
         }
 
+        private object ResolveDataSet(string dataSetName, bool adhoc)
+        {
+            var dataSetElement = ReportElement.DataSets.First(ds => ds.Name.SafeEqualsIgnoreCase(dataSetName));
+            return ResolveDataSet(dataSetElement, adhoc);
+        }
+
+        private void DataSources_Resolve(object sender, ResolvableEventArgs<string, IResolvedDataSource> args)
+        {
+            // Prompt the user first
+
+            var dataSourceElement =
+                ReportElement.DataSources.First(ds => ds.Name.SafeEqualsIgnoreCase(args.ResolvingKey));
+
+            args.ResolvedItem = LocalReportsEngineCommon.ElementToObject(dataSourceElement, this);
+            args.IsResolved = true;
+        }
+
+        public object ResolveDataSet(RdlDataSet dataSetElement, bool adhoc)
+        {
+            // Prompt the user first
+
+            if (dataSetElement.Query == null)
+                return null;
+
+            return DataSources[dataSetElement.Query.DataSourceName].ResolveDataSet(dataSetElement, adhoc);
+        }
+
         private Evaluator CreateExpressionEvaluator()
         {
             var meta = new ExpressionMeta("VisualBasic");
 
             // Expressions
-            foreach (var expression in GetExpressions())
-                meta.AddExpression(expression);
+            string expression;
+            foreach (var candidate in GetPossibleExpressions())
+                if (LocalReportsEngineCommon.IsExpression(candidate, out expression))
+                    meta.AddExpression(expression);
 
             // TODO: Extensions
             var extension = new Extension();
@@ -78,40 +112,59 @@ namespace LocalReportsEngine
             return meta.Compile();
         }
 
-        private IEnumerable<string> GetExpressions()
+        private IEnumerable<string> GetPossibleExpressions()
         {
-            foreach (var expression in GetReportParameterExpressions())
+            foreach (var expression in GetPossibleReportParameterExpressions())
                 yield return expression;
 
-            // TODO: Get all expressions and compile them
+            foreach (var expression in GetPossibleDataSourceExpressions())
+                yield return expression;
 
-            // TODO: Data set reference etc
+            foreach (var expression in GetPossibleDataSetExpressions())
+                yield return expression;
         }
 
-        private IEnumerable<string> GetReportParameterExpressions()
+        private IEnumerable<string> GetPossibleDataSetExpressions()
+        {
+            foreach (var dataSetElement in ReportElement.DataSets)
+            {
+                if (dataSetElement.Query == null)
+                    continue;
+
+                if (dataSetElement.Query.CommandText != null)
+                    yield return dataSetElement.Query.CommandText;
+
+                foreach (var queryParameter in dataSetElement.Query.QueryParameters)
+                    yield return queryParameter.Value;
+            }
+        }
+
+        private IEnumerable<string> GetPossibleDataSourceExpressions()
+        {
+            foreach (RdlDataSource dataSourceElement in ReportElement.DataSources)
+                if (dataSourceElement.ConnectionProperties != null)
+                    if (dataSourceElement.ConnectionProperties.ConnectString != null)
+                        yield return dataSourceElement.ConnectionProperties.ConnectString;
+        }
+
+        private IEnumerable<string> GetPossibleReportParameterExpressions()
         {
             if (ReportElement.ReportParameters != null)
             {
                 foreach (var reportParameter in ReportElement.ReportParameters)
                 {
-                    string expression;
-
                     // Valid Values
                     if (reportParameter.ValidValues != null && reportParameter.ValidValues.ParameterValues != null)
                         foreach (var parameterValue in reportParameter.ValidValues.ParameterValues)
                         {
-                            if (LocalReportsEngineCommon.IsExpression(parameterValue.Label, out expression))
-                                yield return expression;
-
-                            if (LocalReportsEngineCommon.IsExpression(parameterValue.Value, out expression))
-                                yield return expression;
+                            yield return parameterValue.Label;
+                            yield return parameterValue.Value;
                         }
 
                     // Default Values
                     if (reportParameter.DefaultValue != null && reportParameter.DefaultValue.Values != null)
                         foreach (var value in reportParameter.DefaultValue.Values)
-                            if (LocalReportsEngineCommon.IsExpression(value, out expression))
-                                yield return expression;
+                            yield return value;
                 }
             }
         }

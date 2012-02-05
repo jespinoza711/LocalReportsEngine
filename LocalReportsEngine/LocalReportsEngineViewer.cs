@@ -14,49 +14,23 @@ namespace LocalReportsEngine
 
         public LocalReport LocalReport { get { return this.ReportViewer.LocalReport; } }
 
-        public RdlReport Report { get; protected set; }
-
-        public Dictionary<string, object> DataSets { get; protected set; }
-
-        public string ReportPath { get; set; }
-
         public LocalReportsEngineViewer()
-            : base()
         {
-            this.ReportViewer = new ReportViewer();
+            ReportViewer = new ReportViewer();
 
-            this.SuspendLayout();
-            this.ReportViewer.Name = "ReportViewer";
-            this.ReportViewer.Dock = DockStyle.Fill;
-            this.Controls.Add(this.ReportViewer);
-            this.ResumeLayout();
+            SuspendLayout();
+            ReportViewer.Name = "ReportViewer";
+            ReportViewer.Dock = DockStyle.Fill;
+            Controls.Add(ReportViewer);
+            ResumeLayout();
 
-            this.Reset();
-        }
-
-        public void RefreshReport()
-        {
-            this.Reset();
-
-            //this.Report = LocalReportsEngineCommon.DeserializeReport(this.ReportPath);
-            //LocalReportsEngineCommon.ResolveDataSets(this.Report, this.DataSets, this.DataSources); // Later we will add hooks for users
-
-            this.LocalReport.ReportPath = this.ReportPath;
-
-            foreach (var kvp in this.DataSets)
-                this.LocalReport.DataSources.Add(new ReportDataSource(kvp.Key, kvp.Value));
-
-            this.ReportViewer.RefreshReport();
+            Reset();
         }
 
         public void Reset()
         {
-            this.DataSets = new Dictionary<string, object>(StringComparer.InvariantCultureIgnoreCase);
-            this.DataSources = new Dictionary<string, IDataSetResolver>(StringComparer.InvariantCultureIgnoreCase);
-            this.Report = null;
-            this.ReportViewer.Reset();
+            // report meta = null, dispose if necessary
+            ReportViewer.Reset();
         }
-
-        public Dictionary<string, IDataSetResolver> DataSources { get; protected set; }
     }
 }
