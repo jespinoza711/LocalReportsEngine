@@ -74,6 +74,10 @@ namespace LocalReportsEngine
 
             args.ResolvedItem = LocalReportsEngineCommon.ElementToObject(dataSourceElement, this);
             args.IsResolved = true;
+
+            // We need to kick off this event, if the ds was resolved while the report was being refreshed
+            if (IsReportRefreshing)
+                args.ResolvedItem.OnReportRefreshing();
         }
 
         public object ResolveDataSet(RdlDataSet dataSetElement, bool adhoc)
@@ -221,6 +225,20 @@ namespace LocalReportsEngine
             }
 
             IsDisposed = true;
+        }
+
+        public bool IsReportRefreshing { get; private set; }
+
+        internal void OnReportRefreshing()
+        {
+            IsReportRefreshing = true;
+            DataSources.ForEachResolved(kvp => kvp.Value.OnReportRefreshing());
+        }
+
+        internal void OnReportRefreshed()
+        {
+            IsReportRefreshing = false;
+            DataSources.ForEachResolved(kvp => kvp.Value.OnReportRefreshed());
         }
     }
 }

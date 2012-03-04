@@ -53,6 +53,7 @@
 
             var reportParameter = new ReportParameter();
             reportParameter.DataType = StringToDataTypeEnum(reportParameterElement.DataType);
+            reportParameter.MultiValue = StringToBool(reportParameterElement.MultiValue);
 
             // Load available values
             var validValues = reportParameterElement.ValidValues;
@@ -64,11 +65,12 @@
                 // Explicit list
                 if (parameterValues != null)
                 {
-                    foreach(var parameterValue in parameterValues)
-                    {
-                        object value = PhraseToValue(reportMeta, reportParameter.DataType, parameterValue.Value);
-                        reportParameter.AvailableValues.Add(parameterValue.Label, value);
-                    }
+                    var values = from parameterValue in parameterValues
+                                 select new Tuple<string, object>(
+                                     parameterValue.Label,
+                                     PhraseToValue(reportMeta, reportParameter.DataType, parameterValue.Value));
+
+                    reportParameter.AvailableValues = values.ToArray();
                 }
                 else if(dataSetReference != null)
                 {
@@ -87,10 +89,8 @@
                 // Explicit list
                 if (values != null)
                 {
-                    foreach (var value in values)
-                    {
-                        reportParameter.DefaultValues.Add(PhraseToValue(reportMeta, reportParameter.DataType, value));
-                    }
+                    reportParameter.DefaultValues = (from value in values
+                                                     select PhraseToValue(reportMeta, reportParameter.DataType, value)).ToArray();
                 }
                 else if (dataSetReference != null)
                 {
@@ -99,15 +99,14 @@
                 }
             }
 
-            // Set a value (if possible)
-            reportParameter.Value = reportParameter.DefaultValues.FirstOrDefault();
-
-            // Look up label (if possible)
-            reportParameter.Label =
-                reportParameter.AvailableValues.FirstOrDefault(
-                    av => av.Value != null && av.Value.Equals(reportParameter.Value)).Key;
-
             return reportParameter;
+        }
+
+        public static bool StringToBool(string value)
+        {
+            bool result;
+            Boolean.TryParse(value, out result);
+            return result;
         }
 
         public static object PhraseToValue(ReportMeta reportMeta, RdlDataTypeEnum dataType, string phrase)

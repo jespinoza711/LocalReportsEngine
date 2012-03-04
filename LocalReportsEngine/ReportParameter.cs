@@ -7,7 +7,6 @@
 namespace LocalReportsEngine
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Text;
 
@@ -16,13 +15,48 @@ namespace LocalReportsEngine
     /// </summary>
     public class ReportParameter
     {
-        public readonly Dictionary<string, object> AvailableValues = new Dictionary<string, object>();
+        public Tuple<string, object>[] AvailableValues { get; set; }
 
-        public readonly List<object> DefaultValues = new List<object>();
+        public object[] DefaultValues { get; set; }
 
-        public string Label { get; set; }
+        public bool MultiValue { get; set; }
 
-        public object Value { get; set; }
+        // TODO: Handle this better, null value_ might not actually mean "use defaults"
+        private object _value;
+
+        public object Label
+        {
+            get
+            {
+                if (AvailableValues == null)
+                    return null;
+
+                if (DefaultValues == null)
+                    return null;
+
+                // Doesn't handle null values at the moment -- assumes all default values have a value.
+                // TODO: Observe that SSRS seems to handle it such that if a value does not have a label, the value is the label.
+                var labels = DefaultValues.Select(df => AvailableValues.First(av => df.Equals(av.Item2)).Item1);
+
+                if (MultiValue)
+                    return labels.ToArray();
+
+                return labels.First();
+            }
+        }
+
+        public object Value
+        {
+            get
+            {
+                if (_value != null)
+                    return _value;
+
+                return MultiValue ? DefaultValues : DefaultValues.FirstOrDefault();
+            }
+
+            set { _value = value; }
+        }
 
         public RdlElements.RdlDataTypeEnum DataType { get; set; }
     }

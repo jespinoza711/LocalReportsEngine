@@ -12,7 +12,11 @@
 
         object ResolveDataSet(RdlDataSet dataSetElement, bool adhoc);
 
-        // + OnReportRefreshing
-        // + OnReportRefreshed
+        void OnReportRefreshing();
+
+        void OnReportRefreshed();
+
+        // For "MergeTransactions":
+        // object GetTransactionObject();
     }
 }

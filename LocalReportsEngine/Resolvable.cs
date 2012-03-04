@@ -80,5 +80,11 @@ namespace LocalReportsEngine
                 throw new ArgumentOutOfRangeException("key", key, "Unable to resolve");
             }
         }
+
+        public void ForEachResolved(Action<KeyValuePair<TKey, TValue>> action)
+        {
+            foreach (var kvp in ResolvedItems)
+                action(kvp);
+        }
     }
 }

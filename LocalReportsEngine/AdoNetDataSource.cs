@@ -17,7 +17,13 @@ namespace LocalReportsEngine
 
         protected static Dictionary<string, string> DbFactoryNames { get; set; }
 
-        protected DbConnection Connection { get; set; }
+        protected DbConnection AdHocConnection { get; set; }
+
+        protected DbConnection TransactionConnection { get; set; }
+
+        protected DbTransaction Transaction { get; set; }
+
+        protected bool IsTransactional { get; set; }
 
         /// <summary>
         /// 
@@ -48,7 +54,8 @@ namespace LocalReportsEngine
             if (sqlConnectionStringBuilder != null)
             {
                 bool integratedSecurity;
-                if (Boolean.TryParse(dataSource.ConnectionProperties.IntegratedSecurity, out integratedSecurity) && integratedSecurity)
+                if (Boolean.TryParse(dataSource.ConnectionProperties.IntegratedSecurity, out integratedSecurity) &&
+                    integratedSecurity)
                 {
                     sqlConnectionStringBuilder.IntegratedSecurity = true;
                     sqlConnectionStringBuilder.UserID = String.Empty;
@@ -90,16 +97,19 @@ namespace LocalReportsEngine
         {
             DataSourceElement = dataSourceElement;
             ReportMeta = reportMeta;
+            IsTransactional = LocalReportsEngineCommon.StringToBool(dataSourceElement.Transaction);
 
             string factoryName;
 
             lock (DbFactoryNames)
                 if (!DbFactoryNames.TryGetValue(dataSourceElement.ConnectionProperties.DataProvider, out factoryName))
-                    throw new ArgumentOutOfRangeException("dataSourceElement", "ConnectionProperties.DataProvider is unknown");
+                    throw new ArgumentOutOfRangeException("dataSourceElement",
+                                                          "ConnectionProperties.DataProvider is unknown");
 
             var providerFactory = DbProviderFactories.GetFactory(factoryName);
             var connectionString = CreateConnectionString(dataSourceElement, providerFactory);
-            Connection = CreateConnection(providerFactory, connectionString);
+            AdHocConnection = CreateConnection(providerFactory, connectionString);
+            TransactionConnection = IsTransactional ? CreateConnection(providerFactory, connectionString) : null;
         }
 
         ~AdoNetDataSource()
@@ -120,31 +130,74 @@ namespace LocalReportsEngine
 
             if (disposing)
             {
-                if (Connection != null)
-                    Connection.Dispose();
+                // Ad-hoc connection
+                DisposeConnectionNoThrow(AdHocConnection);
+                AdHocConnection = null;
+
+                // Our second, transaction connection
+                DisposeTransaction(Transaction);
+                Transaction = null;
+                DisposeConnectionNoThrow(TransactionConnection);
+                TransactionConnection = null;
             }
 
             IsDisposed = true;
         }
 
+        protected void DisposeConnection(DbConnection connection)
+        {
+            if (connection != null)
+                connection.Dispose();
+        }
+
+        protected void DisposeConnectionNoThrow(DbConnection connection)
+        {
+            try
+            {
+                DisposeConnection(connection);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        protected void DisposeTransaction(DbTransaction transaction)
+        {
+            if (transaction != null)
+                transaction.Dispose();
+        }
+
+        protected void DisposeTransactionNoThrow(DbTransaction transaction)
+        {
+            try
+            {
+                DisposeTransaction(transaction);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         public object ResolveDataSet(RdlDataSet dataSetElement, bool adhoc)
         {
-            // adhoc controls xact behaviour or not
             var queryElement = dataSetElement.Query;
 
             if (queryElement == null)
                 return null;
 
-            var command = Connection.CreateCommand();
+            var transactional = !adhoc && IsTransactional;
+            var command = (transactional ? TransactionConnection : AdHocConnection).CreateCommand();
             command.CommandType = GetCommandType(queryElement.CommandType);
             command.CommandText = queryElement.CommandText;
             command.CommandTimeout = GetCommandTimeout(queryElement.Timeout);
+            command.Transaction = transactional ? Transaction : null;
 
-            foreach(var parameterElement in queryElement.QueryParameters)
+            foreach (var parameterElement in queryElement.QueryParameters)
             {
                 var parameter = command.CreateParameter();
                 parameter.ParameterName = parameterElement.Name;
-                var value = LocalReportsEngineCommon.PhraseToValue(ReportMeta, RdlDataTypeEnum.String, parameterElement.Value);
+                var value = LocalReportsEngineCommon.PhraseToValue(ReportMeta, RdlDataTypeEnum.String,
+                                                                   parameterElement.Value);
                 parameter.Value = value;
 
                 command.Parameters.Add(parameter);
@@ -179,5 +232,32 @@ namespace LocalReportsEngine
         public RdlDataSource DataSourceElement { get; private set; }
 
         public ReportMeta ReportMeta { get; private set; }
+
+        public void OnReportRefreshing()
+        {
+            if (IsTransactional == false)
+                return;
+
+            // TODO: We can get here where Transaction != null by messing with IsTransactional but that's about it...
+            // Make IsT private set and get rid of this
+            DisposeTransaction(Transaction);
+            Transaction = TransactionConnection.BeginTransaction();
+        }
+
+        public void OnReportRefreshed()
+        {
+            if (IsTransactional == false)
+                return;
+
+            try
+            {
+                Transaction.Commit();
+            }
+            finally
+            {
+                DisposeTransactionNoThrow(Transaction);
+                Transaction = null;
+            }
+        }
     }
 }

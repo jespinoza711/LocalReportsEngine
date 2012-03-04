@@ -52,33 +52,45 @@ namespace LocalReportsEngine
 
         public void RefreshReport()
         {
-            // Update the GUI (perhaps for the first time)
-
-            // Specify all parameters
-            LocalReport.SetParameters(GetParameters());
-
-            // Specify all data sets
-            foreach (var dataSetElement in CurrentReportMeta.ReportElement.DataSets)
+            try
             {
-                var instance = CurrentReportMeta.ResolveDataSet(dataSetElement, false);
-                var item = new ReportDataSource(dataSetElement.Name, instance);
-                LocalReport.DataSources.Add(item);
-            }
+                CurrentReportMeta.OnReportRefreshing();
 
-            // Render the report
-            ReportViewer.RefreshReport();
+                // Update the GUI (perhaps for the first time)
+
+                // Specify all parameters
+                LocalReport.SetParameters(GetParameters());
+
+                // Specify all data sets
+                foreach (var dataSetElement in CurrentReportMeta.ReportElement.DataSets)
+                {
+                    var instance = CurrentReportMeta.ResolveDataSet(dataSetElement, false);
+                    var item = new ReportDataSource(dataSetElement.Name, instance);
+                    LocalReport.DataSources.Add(item);
+                }
+
+                // Render the report
+                ReportViewer.RefreshReport();
+            }
+            finally
+            {
+                CurrentReportMeta.OnReportRefreshed();
+            }
         }
 
         private IEnumerable<Microsoft.Reporting.WinForms.ReportParameter> GetParameters()
         {
             foreach(var parameterElement in CurrentReportMeta.ReportElement.ReportParameters)
             {
-                var parameter = new Microsoft.Reporting.WinForms.ReportParameter();
-                parameter.Name = parameterElement.Name;
-
-                // TODO: foreach(var value in xxx)
+                var parameter = new Microsoft.Reporting.WinForms.ReportParameter(parameterElement.Name);
                 var resolvedParameter = CurrentReportMeta.ReportParameters[parameter.Name];
-                parameter.Values.Add(LocalReportsEngineCommon.ValueToString(resolvedParameter.Value, resolvedParameter.DataType));
+
+                if (resolvedParameter.MultiValue)
+                    foreach (var value in (object[])resolvedParameter.Value)
+                        parameter.Values.Add(LocalReportsEngineCommon.ValueToString(value, resolvedParameter.DataType));
+                else
+                    parameter.Values.Add(LocalReportsEngineCommon.ValueToString(resolvedParameter.Value, resolvedParameter.DataType));
+
                 yield return parameter;
             }
         }

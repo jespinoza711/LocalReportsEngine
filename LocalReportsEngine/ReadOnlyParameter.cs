@@ -16,14 +16,14 @@ namespace LocalReportsEngine
     /// </summary>
     public sealed class ReadOnlyParameter : MarshalByRefObject
     {
-        public string Label { get; private set; }
+        public object Label { get; private set; }
 
         // readonly fields cause errors in the sandbox??
         public object Value { get; private set; }
 
         // values etc.
 
-        internal ReadOnlyParameter(string label, object value)
+        internal ReadOnlyParameter(object label, object value)
         {
             Label = label;
             Value = value;
